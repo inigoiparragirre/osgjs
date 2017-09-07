@@ -11,6 +11,8 @@ var PointSizeAttribute = function(disable) {
     this._pointSize = 1.0;
     // careful with this option if there is lines/triangles under the stateset
     this._circleShape = false;
+    this._dirtyHash = true;
+    this._hash = '';
 };
 
 MACROUTILS.createPrototypeStateAttribute(
@@ -54,6 +56,14 @@ MACROUTILS.createPrototypeStateAttribute(
         },
 
         getHash: function() {
+            if (!this._dirtyHash) return this._hash;
+
+            this._hash = this._computeInternalHash();
+            this._dirtyHash = false;
+            return this._hash;
+        },
+
+        _computeInternalHash: function() {
             return (
                 this.getTypeMember() +
                 (this.isEnabled() ? '1' : '0') +
