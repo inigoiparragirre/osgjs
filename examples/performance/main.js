@@ -53,7 +53,23 @@
                 that._viewer
                     .getCamera()
                     .setEnableFrustumCulling(!that._viewer.getCamera().getEnableFrustumCulling());
-            }
+            },
+            loseContext: function() {
+                var gl = this._viewer.getGraphicContext();
+                this._viewer.setContextLostCallback(function() {
+                    console.log('lostContext');
+                    return true;
+                });
+                var ext = gl.getExtension('WEBGL_lose_context');
+                console.log('lostContext start');
+                ext.loseContext();
+                console.log('lostContext done');
+                window.setTimeout(function() {
+                    console.log('restore start');
+                    ext.restoreContext(gl);
+                    console.log('restore done');
+                }, 0);
+            }.bind(this)
         };
 
         this._mediaPath = '';
@@ -248,6 +264,7 @@
             //button
             this._gui.add(this._config, 'update');
             this._gui.add(this._config, 'frustumCulling');
+            this._gui.add(this._config, 'loseContext');
             //this._gui.add( this._config, 'postProc' );
             //this._gui.add( this._config, 'scissor' );
 

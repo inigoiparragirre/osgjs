@@ -72,8 +72,8 @@ View.prototype = {
         return this.getCamera().getRenderer().getState().getGraphicContext();
     },
 
-    initWebGLCaps: function(gl) {
-        WebGLCaps.instance(gl);
+    initWebGLCaps: function(gl, force) {
+        WebGLCaps.instance(gl, force);
     },
 
     // check Each frame because HTML standard inconsistencies

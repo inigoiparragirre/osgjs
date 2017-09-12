@@ -142,6 +142,23 @@ MACROUTILS.createPrototypeObject(Stats, {
             this._updates.push(config.update);
         }
     },
+    reset: function() {
+        // remove geometry and rebuild
+        var node = this._node.getChildren()[0];
+        node.removeChild(node.getChildren()[0]);
+        this._bufferStats._geometry.releaseGLObjects();
+        this._bufferStats._geometry = undefined;
+
+        this._bufferStats.resetCaptions();
+        this._bufferStats.resetValues();
+
+        this._dirtyCaptions = true;
+        this._dirtyValue = true;
+
+        this._bufferStats.resize(this._bufferStats._maxNbVertexes);
+
+        node.addChild(this._bufferStats._geometry);
+    },
     update: function() {
         for (var i = 0; i < this._updates.length; i++) {
             this._updates[i](this);

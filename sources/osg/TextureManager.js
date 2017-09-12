@@ -187,6 +187,14 @@ TextureObjectSet.prototype = {
                 nbTextures * size / (1024 * 1024) +
                 ' MB'
         );
+    },
+
+    lostContext: function() {
+        var nbTextures = this._orphanedTextureObjects.length;
+        for (var i = 0, j = nbTextures; i < j; ++i) {
+            this._orphanedTextureObjects[i].reset();
+        }
+        this._orphanedTextureObjects.length = 0;
     }
 };
 
@@ -254,6 +262,12 @@ TextureManager.prototype = {
     flushAllDeletedTextureObjects: function(gl) {
         for (var keyTexture in this._textureSetMap) {
             this._textureSetMap[keyTexture].flushAllDeletedTextureObjects(gl);
+        }
+    },
+
+    lostContext: function(gl) {
+        for (var keyTexture in this._textureSetMap) {
+            this._textureSetMap[keyTexture].lostContext(gl);
         }
     },
 

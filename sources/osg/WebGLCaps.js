@@ -39,7 +39,7 @@ var WebGLCaps = function() {
     this._gl = undefined;
 };
 
-WebGLCaps.instance = function(glParam) {
+WebGLCaps.instance = function(glParam, force) {
     if (!WebGLCaps._instance) {
         var oldWebGLInspector;
         var gl = glParam;
@@ -87,8 +87,8 @@ WebGLCaps.instance = function(glParam) {
         //delete c;
     }
 
-    if (glParam && glParam !== WebGLCaps._instance.getContext()) {
-        // webgl caps called with a different context
+    if (glParam && (force || glParam !== WebGLCaps._instance.getContext())) {
+        // webgl caps called with a different context or GPU
         // than the one we draw in, will result on hard crash
         // when using extension from another context
         WebGLCaps._instance.initContextDependant(glParam);

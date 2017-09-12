@@ -7,6 +7,11 @@ var Timer = require('osg/Timer');
 var TimerGPU = require('osg/TimerGPU');
 var UpdateVisitor = require('osg/UpdateVisitor');
 var MACROUTILS = require('osg/Utils');
+var GLObject = require('osg/GLObject');
+var FrameBufferObject = require('osg/FrameBufferObject');
+var BufferArray = require('osg/BufferArray');
+var Shader = require('osg/Shader');
+var Program = require('osg/Program');
 var Texture = require('osg/Texture');
 var OrbitManipulator = require('osgGA/OrbitManipulator');
 var EventProxy = require('osgViewer/eventProxy/eventProxy');
@@ -90,7 +95,7 @@ var Viewer = function(canvas, userOptions, error) {
 
     this._hmd = null;
     this._requestAnimationFrame = window.requestAnimationFrame.bind(window);
-
+    this._options = options;
     this._contextLost = false;
 };
 
@@ -116,6 +121,7 @@ MACROUTILS.createPrototypeObject(
                 eventsBackend.Hammer.eventNode =
                     eventsBackend.Hammer.eventNode || defaultMouseEventNode;
             }
+
             // gamepad
             eventsBackend.GamePad = eventsBackend.GamePad || {};
 
@@ -182,7 +188,6 @@ MACROUTILS.createPrototypeObject(
 
         initRun: function(options) {
             if (options.getBoolean('GLSLOptimizer') === true) {
-                var Shader = require('osg/Shader');
                 Shader.enableGLSLOptimizer = true;
 
                 this._runPromise = getGLSLOptimizer();
@@ -199,31 +204,72 @@ MACROUTILS.createPrototypeObject(
             }
         },
 
-        setContextLostCallback: function(cb) {
-            this._contextLostCallback = cb;
+        // allow user to acknowledge the context lost
+        // (display a message, etc.)
+        // - callback return false: no attempt to restore
+        // - callback return true: attempt to restore context
+        setContextLostCallback: function(callback) {
+            this._contextLostCallback = callback;
             // just in case callback registration
             // happens after the context lost
             if (this._contextLost) {
-                cb();
+                this._forceRestoreContext = callback();
             }
+        },
+
+        setContextRestoreCallback: function(callback) {
+            this._contextRestoreCallback = callback;
         },
 
         contextLost: function() {
             Notify.log('webgl context lost');
+
             if (this._contextLostCallback) {
-                this._contextLostCallback();
+                this._forceRestoreContext = this._contextLostCallback();
             }
             this._contextLost = true;
-            window.cancelAnimationFrame(this._requestID);
+            if (!this._forceRestoreContext && window.cancelAnimationFrame) {
+                window.cancelAnimationFrame(this._requestID);
+            }
         },
 
         contextRestored: function() {
-            Notify.log('webgl context restored, but not supported - reload the page');
-            // Supporting it implies to have
-            // reloaded all your resources:
-            // textures, vertex/index buffers, shaders, frame buffers
-            // so only set it back if you happen to have restored the context
-            // this._contextLost = false;
+            if (!this._forceRestoreContext) {
+                Notify.log('webgl context restored, but not supported - reload the page');
+                return;
+            }
+            var gl = this.getGraphicContext();
+
+            Shader.lostContext(gl);
+            Program.lostContext(gl);
+            BufferArray.lostContext(gl);
+            Texture.getTextureManager(gl).lostContext(gl);
+            FrameBufferObject.lostContext(gl);
+            FrameBufferObject.lostContext(gl);
+            GLObject.lostContext(gl);
+
+            // make sure we don't cache states
+            // and prevent rebindings
+            // TODO: all camera/renderer ?
+            this.getCamera().getRenderer().setDefaults();
+
+            // if a different GPU, different webglcaps
+            this.initWebGLCaps(gl, true);
+            this.setGraphicContext(gl);
+
+            // different GPU caps means different timer caps
+            TimerGPU.instance(this.getGraphicContext(), true);
+            if (this._stats) {
+                // stats geometries needs special care
+                this._stats.reset();
+            }
+
+            // ready to draw again
+            this._contextLost = false;
+            this._requestRedraw = true;
+
+            // Warn users context has been restored
+            if (this._contextRestoreCallback) this._contextRestoreCallback(gl);
         },
 
         init: function() {

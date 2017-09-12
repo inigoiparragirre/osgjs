@@ -115,6 +115,18 @@ FrameBufferObject.flushAllDeletedGLRenderBuffers = function(gl) {
     }
 };
 
+FrameBufferObject.lostContext = function(gl) {
+    if (!FrameBufferObject._sDeletedGLFrameBufferCache.has(gl)) return;
+
+    var deleteList = FrameBufferObject._sDeletedGLFrameBufferCache.get(gl);
+    deleteList.length = 0;
+
+    if (!FrameBufferObject._sDeletedGLRenderBufferCache.has(gl)) return;
+
+    deleteList = FrameBufferObject._sDeletedGLRenderBufferCache.get(gl);
+    deleteList.length = 0;
+};
+
 /** @lends FrameBufferObject.prototype */
 MACROUTILS.createPrototypeStateAttribute(
     FrameBufferObject,
@@ -125,6 +137,12 @@ MACROUTILS.createPrototypeStateAttribute(
 
             cloneType: function() {
                 return new FrameBufferObject();
+            },
+
+            invalidate: function() {
+                this._attachments = [];
+                this._rbo = undefined;
+                this._fbo = undefined;
             },
 
             dirty: function() {
@@ -148,7 +166,8 @@ MACROUTILS.createPrototypeStateAttribute(
                 if (this._rbo !== undefined && this._gl !== undefined) {
                     FrameBufferObject.deleteGLRenderBuffer(this._gl, this._rbo);
                 }
-                this._rbo = undefined;
+                GLObject.removeObject(this._gl, this);
+                this.invalidate();
             },
 
             _reportFrameBufferError: function(code) {
